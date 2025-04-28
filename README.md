@@ -134,23 +134,23 @@ the COMPILATION section below.
 Most of the modified code is in the following files:
 
 ```
-    moddefs.h		definitions and declarations associated
-					with the fast, but memory intensive
-					version of the new code.
+    moddefs.h       definitions and declarations associated
+                    with the fast, but memory intensive
+                    version of the new code.
 
-    slautomodified.c	contains the fast, but memory intensive 
-						version of the new code.
+    slautomodified.c    contains the fast, but memory intensive 
+                        version of the new code.
 
     slsexmodified.c	contains the sex-linked version of
-					slautomodified.c
+                    slautomodified.c
 
     slomoddefs.h 	 	 versions that contain the slower but
     slsloautomodified.c  space-efficient alternatives of the
     slslosexmodified.c	 above modules
 
-    oldsegup.c		contains the old (p2c version of original
-					programs) versions of segup() and segsexup(),
-					which are needed for handling mutation data.
+    oldsegup.c      contains the old (p2c version of original
+                    programs) versions of segup() and segsexup(),
+                    which are needed for handling mutation data.
 ```
 
 We have changed seg() in the original code so that the modified
