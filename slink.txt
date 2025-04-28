@@ -1,0 +1,1278 @@
+28 Oct 2010
+
+
+   SLINK: a general simulation program for linkage analysis
+            Based on an algorithm by Jurg Ott
+ Programming by Daniel E. Weeks with the help of Mark Lathrop
+                      and Jurg Ott
+       Documentation by Daniel E. Weeks and Jurg Ott
+
+                       **** WARNING ****
+Familiarity with the LINKAGE programs is assumed.  You will not
+be able to correctly use these programs unless you are familiar
+with the LINKAGE programs.  This documentation does not attempt
+to teach you how to use the LINKAGE programs.  Furthermore, it is
+assumed that you already have the LINKAGE package.  If you do not
+have it, it may be obtained from 
+
+ftp://linkage.rockefeller.edu/software/linkage/
+
+However, we recommend using the faster version known as FASTLINK,
+which is available from here:
+
+http://www.ncbi.nlm.nih.gov/CBBresearch/Schaffer/fastlink.html
+
+
+*****************************************************************
+
+0. CURRENT VERSION . . . . . . . . . . . . . . . . . . . . . .  2
+
+1. INTRODUCTION. . . . . . . . . . . . . . . . . . . . . . . .  2
+
+2. OVERVIEW OF SLINK . . . . . . . . . . . . . . . . . . . . .  3
+
+3. INPUT FILES AND AVAILABILITY CODES. . . . . . . . . . . . .  4
+
+4. HOW TO USE SLINK. . . . . . . . . . . . . . . . . . . . . .  6
+
+5. TYPICAL APPLICATIONS. . . . . . . . . . . . . . . . . . .   11
+ 5A. MSIM: Approximating the expected lod score. . . . . . .   11
+ 5B. LSIM: Disease versus map of markers . . . . . . . . . .   14
+ 5C. ISIM: Average maximum lod score and power . . . . . . .   17
+ 5D. MSIM: Interpolating Zmax in each replicate. . . . . . .   19
+ 5E. Finding the peak of the expected lod score curve. . . .   19
+ 5F. MSIM and HOMOG and ELODHET: analysis under heterogeneity  19
+
+6. TECHNICAL INFORMATION . . . . . . . . . . . . . . . . . .   20
+     6A. Program constants . . . . . . . . . . . . . . . . .   21
+     6B. References for SLINK. . . . . . . . . . . . . . . .   22
+     6C. Acknowledgments . . . . . . . . . . . . . . . . . .   22
+
+7. LITERATURE. . . . . . . . . . . . . . . . . . . . . . . .   22
+
+
+0. CURRENT VERSION
+
+	The current version of FastSLINK is 3.00 dated 28 Oct 2010.
+FastSLINK is written in C and executes much more rapidly than the
+original version of SLINK, which was written in Pascal. The
+documentation below describes the original SLINK program, but is,
+for the most part, applicable to the FastSLINK program. For
+additional details regarding how FastSLINK differs from SLINK,
+please see the README.txt file that is distributed with
+FastSLINK.
+
+Compared to previous versions, the following changes have been
+implemented:
+
+     The default buffer size (128 bytes) for the input or output
+files (whichever is usually larger) was increased to 4K bytes. 
+This resulted in the addition of at least one extra line of code
+in nonstandard Pascal.
+     The critical levels for the maximum lod score (previously
+fixed at 1, 2, and 3) are now user defined and must be furnished
+to the analysis program in an input file called LIMIT.DAT (see
+section 5).  Similarly, input previously expected by SLINK on an
+interactive basis must now be furnished in an input file called
+SLINKIN.DAT (see section 3).
+     The quadratic interpolation routine, QUADMAX, in the MSIM
+program has been rewritten, because it occasionally seemed to
+give nonsensical results.  It is now based on formulas (8.8)-
+(8.14) in Ott (1991) and interpolates the maximum lod score given
+three pairs of values (Z, theta).  It does not carry out any extrapo-
+lation beyond the smallest or largest theta value.  If the lengths of
+the two intervals differ by more than a factor of 4, no quadratic
+interpolation is carried out, because the quadratic approximation
+may not fit the lod score curve very well in those circumstances. 
+Also, no interpolation takes place when the first of the three
+lod scores is less than -100 (at theta=0, presumably).
+
+     Known bugs:  In the present version of SLINK, pedigree ID's
+may be names or numbers.  If they are numbers, these numbers must
+not exceed the maximum number of pedigrees specified (it is
+safest to number pedigrees consecutively starting with 1).  This
+is inconsistent with the LINKAGE programs, and the next program
+version will correct this inconsistency.
+
+1. INTRODUCTION
+
+     Simulation can provide approximate answers to questions that
+are cumbersome or impossible to answer analytically.  For exam-
+ple, in a linkage study of a disease it is important to know if
+the pedigrees you have collected (or plan to collect) will be
+sufficient to detect linkage.  The power to detect linkage
+depends on a variety of factors, such as the structure of the
+pedigree, the number of affected individuals, and the informa-
+tiveness of the markers.  The SLINK program described below
+allows one to carry out such power calculations by simulating
+genotypes at one locus given the phenotypes at another locus
+linked with the first locus.  If one is interested in simulating
+under no linkage (e.g., to investigate exclusion possibilities or
+p-values), the SLINK program may also be used but other programs
+such as SIMULATE are in that case much more efficient than SLINK.
+
+	The SLINK package consists of a simulation program (SLINK)
+and several analysis programs (MSIM, LSIM, ISIM, ELODHET) (this
+allows analyzing the data under models different from those under
+which the data were generated). As outlined below, the input
+files to these programs conform to the rules required by the
+LINKAGE programs.
+
+	SLINK implements a simulation algorithm developed by Jurg Ott
+and described in:
+
+	1) Ott J (1989) Computer-simulation methods in human linkage
+analysis.  Proc Natl Acad Sci USA 86:4175-4178
+
+	The algorithm was implemented in the original SLINK computer
+program package by Weeks, Ott, and Lathrop:
+
+	2) Weeks DE, Ott J, Lathrop GM (1990) SLINK: a general
+simulation program for linkage analysis. Am J Hum Genet 47:A204
+(abstr)
+
+	SLINK is based on the LINKAGE programs version 4.9 (Lathrop
+et al., 1984) and accepts slightly modified LINKAGE data files as
+explained in the file 'slink.txt'.  The code has been updated to
+be consistent with LINKAGE version 5.1.
+
+	The SLINK simulation program has been modified by Schaffer
+and Weeks to use the algorithms developed by Cottingham et al:
+
+	3) Cottingham Jr RW, Idury RM, Schaffer AA (1993) Faster
+sequential genetic linkage computations. Am J Hum Genet
+53:252-263
+
+Please cite references 1-3 if you use FastSLINK.  Thank you.
+
+
+	Note that SLINK by itself is quite limited in terms of the
+number of markers that it can handle.  If you wish to simulate
+large number of markers, then the SUP program will also be
+necessary:
+
+	Lemire M. SUP: an extension to SLINK to allow a larger number
+of marker loci to be simulated in pedigrees conditional on trait
+values. BMC Genet. 2006 Jul 3;7:40. PubMed PMID: 16803631; PubMed
+Central PMCID: PMC1524809.
+
+SUP is available from the web site:
+
+http://mlemire.freeshell.org/software.html
+
+
+2. OVERVIEW OF SLINK
+
+	The documentation below describes the original SLINK program,
+but is, for the most part, applicable to the FastSLINK program.
+For additional details regarding how FastSLINK differs from
+SLINK, please see the README.txt file that is distributed with
+FastSLINK.
+
+     The program SLINK is a general computer simulation program
+that employs a variation of the algorithm described by Ott
+(1989).  Suppose there are N people in a pedigree.  Let x = (x1,
+x2,...,xN) represent the vector of phenotypes of the N people in
+the pedigree.  Likewise, let g = (g1, g2,...,gN) represent the
+vector of multi-locus genotypes including phase information.  Then
+the conditional probability distribution of the genotypes given
+the phenotypes may be calculated by a series of successive risk
+calculations:
+
+     P(g>=x) = P(g1>=x) P(g2>=g1,x) P(g3>=g1,g2,x)...
+
+In the SLINK simulation algorithm, we calculate the conditional
+probabilities (or risks) of all the possible multi-locus genotypes
+with phase, P(g1>=x) and, based on these, we randomly assign one
+of the genotypes to person 1.  We then calculate P(g2>=g1,x),
+taking into account the genotype g1 just generated, and randomly
+assign a genotype to person 2, and so on.  The process of succes-
+sive risk calculations continues until all individuals in the
+pedigree have been assigned a multi-locus genotype.  This approach
+is quite efficient since once a multi-locus genotype has been
+assigned to one individual, it is known in all subsequent steps. 
+Note that this algorithm permits simulation conditional on any
+combination of phenotypic data.  For example, if the pedigree
+were partially typed at a marker of interest, one could simulate
+conditional on both the disease phenotypes and the marker data
+currently available.
+
+     SLINK is based on the LINKAGE programs version 4.9 (Lathrop
+et al., 1984) and accepts slightly modified LINKAGE data files as
+explained below.  The simulated pedigrees may be analyzed by
+either the standard LINKAGE programs or by the special companion
+programs (MSIM, ISIM, or LSIM), which have been modified to read
+one replicate of the pedigrees at a time, rather than reading in
+the entire pedigree file.  In addition, the companion programs
+provide some simple statistical summaries.
+     As described above, the data are simulated conditional on
+the phenotypes given in the pedigree file, at the recombination
+fraction(s) given in the data file.  The loci are conceptually
+divided into two categories: the 'trait' locus and the marker
+loci;  the trait locus need not be an affection-status locus type
+but may be a codominant marker as well.  There may be either one
+or no trait locus, while there may be as many marker loci as you
+desire.  The trait locus is distinguished from the marker loci in
+order to provide more flexibility in simulating the data, as
+described below.
+
+3. INPUT FILES AND AVAILABILITY CODES
+
+     SLINK requires three input files:
+
+     A) 'slinkin.dat' holding various parameter values, which
+previously had to be furnished interactively.  No text is permit-
+ted between the values but text may follow the last input value
+(see example file).  The values are:
+               a) A seed for the random number generator.  This
+          should be a different integer between 1 and 30,000 each
+          time.  Larger numbers (> 25,000) are better.
+               b) The number of replicates desired.
+               c) The locus number identifying the trait locus. 
+          This is the number of the trait locus in the 'simda-
+          ta.dat' file (see below).  If you placed the trait
+          locus first in your 'simdata.dat' file, then the locus
+          number is 1.  Input a zero if there is no trait locus,
+          i.e., if all the loci are markers.
+               d) The proportion of unlinked families (if you
+          want to allow for heterogeneity).  Input 0 if you want
+          to simulate under the assumption of homogeneity (all
+          families are of the linked type, normal situation). 
+          See section 5F for analyzing data generated under
+          heterogeneity.
+
+     B) 'simdata.dat', which is a standard LINKAGE data file in
+MLINK-format.
+
+     C) 'simped.dat', which is a standard LINKAGE pedigree file
+with an additional column inserted after the last phenotype
+column.  This additional column in the SLINK pedigree file
+'simped.dat' contains the availability code, which controls what
+type of phenotypes are written to the output file.  These codes
+are consistent with the codes used by the simulation program
+SIMLINK (Boehnke, 1986; Ploughman and Boehnke, 1989).
+
+         Meaning of code for
+Code     Markers      Trait
+ 0     Unavailable  Use orig. phenotypes as given in 'simped.dat'
+ 1     Available    Use simulated phenotypes
+ 2     Available    Use orig. phenotypes as given in 'simped.dat'
+ 3     Unavailable  Use simulated phenotypes
+
+     A person should be coded as "marker unavailable" if that
+person will be assigned the phenotype "unknown" at each marker
+locus in the output file 'pedfile.dat'.  This is appropriate if
+the person will not be typed for any markers because DNA samples
+are not available from that person (i.e., they are dead or
+uncooperative).  Likewise, a person should be coded as "marker
+available" if that person will be assigned simulated marker
+phenotypes in the output file 'pedfile.dat'.
+     It is usually appropriate to "use original phenotypes" as
+given in 'simped.dat' at the trait locus, because most simulation
+studies of diseases are carried out conditional on the observed
+phenotypes.  If the "use original phenotypes" option is chosen,
+then the trait phenotype remains as it was in the 'simped.dat'
+input file.  In rare cases, you may want to simulate trait
+phenotypes by choosing the "use simulated phenotypes" option.
+     Keep in mind that these simulations are carried out condi-
+tional on the phenotypes given in the 'simped.dat' input file. 
+Thus, if you want to indicate that someone is unavailable at the
+trait locus, make their original phenotype unknown in 'sim-
+ped.dat' and use one of the two "Use original phenotypes" codes.
+     If a simulation was being carried out using marker data
+only, then only two availability codes are needed, as indicated
+in the table below (codes 2 or 3 can still be used, if desired).
+Every person who has an availability code of 0 will be given the
+'unknown' phenotype at each marker locus.  Every person who has
+an availability code of 1 will be given a simulated phenotype at
+each marker locus.
+
+Code     Meaning of code for Markers
+ 0     Unavailable: Assign phenotype 'unknown' at each marker
+ 1     Available: Assign simulated phenotypes at each marker
+
+It is highly recommended that you read the example problems below
+before attempting to use this simulation package.
+
+EXAMPLE 1: Small 4-member family
+
+     Suppose we want to simulate the marker genotypes for two
+affected children in a simple nuclear family where the two
+parents must be carriers for a fully penetrant recessive disease,
+and they are known to have four different marker alleles.  We
+first create a pedigree file called 'simpre.dat' which, after
+processing it with MAKEPED (one of the programs of the LINKAGE
+package), will become 'simped.dat' ('simpre.dat' is shown below; 
+the comments beginning with <= are not part of the file).  We use
+the availability code 2 for everyone, which means "Markers
+available, Use original trait phenotypes".  Thus, the 'pedfi-
+le.dat' file (to be created by SLINK) will contain the original
+trait phenotypes as given in 'simpre.dat' (and 'simped.dat').  At
+the marker locus, person 1 will be 1/2 and person 2 will be 3/4,
+since the simulations are carried out conditional on the pheno-
+types given in the 'simped.dat' file.  The two affected children
+(persons 3 and 4) will be assigned simulated marker phenotypes,
+since their original marker phenotypes in the 'simped.dat' file
+are unknown (0 0).
+
+  File: simpre.dat
+1 1 0 0 1  1  1 2  2  <= Father who is 1/2 at the marker
+1 2 0 0 2  1  3 4  2  <= Mother who is 3/4 at the marker
+1 3 1 2 1  2  0 0  2  <= First affected child
+1 4 1 2 2  2  0 0  2  <= Second affected child
+
+     In the corresponding 'simdata.dat' file below, we give
+penetrances corresponding to a fully penetrant recessive disease
+at the trait locus and define a codominant four-allele system at
+the marker locus.
+
+  File: simdata.dat
+
+ 2 0 0 5 << NO. OF LOCI, RISK LOCUS, SEXLINKED (IF 1) PROGRAM
+ 0 0.0 0.0 0 << MUT LOCUS, MUT MALE, MUT FEM, HAP FREQ (IF 1)
+ 1 2
+1  2 << AFFECTION, NO. OF ALLELES
+ 0.9900 0.0100  << GENE FREQUENCIES  Trait locus
+ 1 << NO. OF LIABILITY CLASSES
+ 0.0000 0.0000 1.0000 << PENETRANCES
+3  4 << ALLELE NUMBERS, NO. OF ALLELES  Marker locus
+ 0.250000 0.250000 0.250000 0.250000  << GENE FREQUENCIES
+ 0 0 << SEX DIFFERENCE, INTERFERENCE (IF 1 OR 2)
+ 0.01000 << RECOMBINATION VALUES
+ 1 0.01000 0.50000 << REC VARIED, INCREMENT, FINISHING VALUE
+
+This example (files in subdirectory EXAMPLE1) is referred to
+again in sections 5C and 5D.
+
+
+4. HOW TO USE SLINK
+     
+     First, compile the programs in the SLINK package to create
+executables.  Compilation instructions are in the documentation
+file README.txt.
+
+     To carry out a simulation, proceed as follows (see also
+figure 1, appended):
+
+     1) Create a 'simdata.dat' file defining the locus systems
+and the true thetas.
+     2) Create a 'simped.dat' file defining the pedigree struc-
+ture, phenotypes, and availability codes.
+     3) Create the 'slinkin.dat' file defining parameters for the
+simulation (see section 3, above).
+     4) Run SLINK to create a 'pedfile.dat' with the simulated
+data in it.
+     5) Create a 'datafile.dat' defining how the simulated data
+should be analyzed.
+     6) Run UNKNOWN to create a 'speedfile.dat' and an 'ipedfi-
+le.dat'.
+     7) Run the appropriate analysis program, such as MSIM or
+LSIM.
+
+These steps are described in detail below;  the files of the
+example data referred to below are in subdirectory EXAMPLE2.
+
+Step 1) Create a 'simdata.dat' file defining the locus systems
+and the true thetas.
+
+     The file 'simdata.dat' defines the locus systems and the
+TRUE thetas (recombination fractions) under which the simulation
+will be carried out.  These true theta values are given in the
+RECOMBINATION VALUES line;  the subsequent line with increment
+and finishing value is irrelevant for SLINK.  The 'simdata.dat'
+file must be in standard MLINK format and can be created with the
+PREPLINK program of the LINKAGE package.
+     In this example, we are interested in simulating two linked
+markers segregating down through two schizophrenia pedigrees,
+conditional on the current schizophrenia diagnoses.  This simula-
+tion will be carried out under the assumptions that the locus
+order is 599Ha---Schizophrenia---153Ra, with 8 cM between 599Ha
+and the disease locus, and 5.7 cM between the disease locus and
+153Ra.
+
+File: 'simdata.dat'
+
+ 3 0 0 5 << NO. OF LOCI, RISK LOCUS, SEXLINKED (IF 1) PROGRAM
+ 0 0.0 0.0 0 << MUT LOCUS, MUT MALE, MUT FEM, HAP FREQ (IF 1)
+ 1 2 3  << Order of loci
+3  3 << ALLELE NUMBERS, NO. OF ALLELES Locus p105-599Ha/TaqI
+ 0.3200 0.1600 0.5200  << GENE FREQUENCIES
+1  2 << AFFECTION, NO. OF ALLELES  Locus Schizophrenia
+ 0.991500 0.008500  << GENE FREQUENCIES
+ 3 << NO. OF LIABILITY CLASSES
+ 1.0000 0.1400 0.0000   Normal
+ 0.0000 0.8600 0.0000   Affected
+ 1.0000 0.0000 0.0000   Married in Normals << PENETRANCES
+3  2 << ALLELE NUMBERS, NO. OF ALLELES  Locus p105-153Ra/XbaI
+ 0.3300 0.6700  << GENE FREQUENCIES
+ 0 0 << SEX DIFFERENCE, INTERFERENCE (IF 1 OR 2)
+ 0.0739 0.0539 << RECOMB. VALUES  Schiz. is 8 cM from p105-599Ha
+ 2 0.01000 0.50000 << REC VARIED, INCREMENT, FINISHING VALUE
+
+Step 2) Create a 'simped.dat' file defining the pedigree struc-
+ture, phenotypes, and availability codes
+
+     First use a text editor to create a pedigree file 'simpre.dat' 
+analogous to the one shown above in example 1.  Then use
+MAKEPED to create the 'simped.dat' pedigree file.
+
+     The file 'simped.dat' defines the pedigrees to be simulated. 
+It is a LINKAGE pedigree file with an additional column contain-
+ing the availability codes after the last phenotype field.  All
+simulations are carried out CONDITIONAL on the phenotypes given
+in 'simped.dat'.
+
+     The example pedigree file contains two pedigrees from
+Sherrington et al (1988), with marker locus 599Ha, the schizo-
+phrenia locus, and marker locus 153Ra, in that order.  Note that
+all individuals are untyped at both markers.  Also, most individ-
+uals have an availability code of 2, indicating that all their
+marker phenotypes will be simulated while their trait phenotypes
+will be left as specified here.  When a person is "marker avail-
+able", marker phenotypes are simulated for ALL the marker loci;
+it is not possible to make a person "marker available" for a
+subset of the marker loci.
+
+File: 'simped.dat'
+
+1  1  0  0  3  0  0 1 1  0 0  2 3  0 0  2
+1  2  0  0  3  0  0 2 0  0 0  2 2  0 0  0
+1  3  1  2  0  4  4 2 0  0 0  2 2  0 0  2
+1  4  1  2  0  5  5 2 0  0 0  2 1  0 0  2
+1  5  1  2  0  6  6 1 0  0 0  2 2  0 0  2
+1  6  1  2  0  7  7 2 0  0 0  2 1  0 0  2
+1  7  1  2  0  8  8 1 0  0 0  2 1  0 0  2
+1  8  1  2  0  9  9 1 0  0 0  2 2  0 0  2
+1  9  1  2  0 10 10 1 0  0 0  2 2  0 0  2
+1 10  1  2 14 12 12 2 0  0 0  2 2  0 0  2
+1 11  0  0 14  0  0 1 0  0 0  2 3  0 0  2
+1 12  1  2  0 13 13 1 0  0 0  2 2  0 0  2
+1 13  1  2  0  0  0 2 0  0 0  2 1  0 0  2
+1 14 11 10  0 15 15 2 0  0 0  2 1  0 0  2
+1 15 11 10  0 16 16 1 0  0 0  2 2  0 0  2
+1 16 11 10  0 17 17 1 0  0 0  2 2  0 0  2
+1 17 11 10  0  0  0 2 0  0 0  2 1  0 0  2
+2  1 0 0  3  0  0 1 1  0 0  2 3  0 0  0
+2  2 0 0  3  0  0 2 0  0 0  2 2  0 0  2
+2  3 1 2  0  4  4 2 0  0 0  2 2  0 0  2
+2  4 1 2  0  5  5 1 0  0 0  2 2  0 0  2
+2  5 1 2  0  6  6 1 0  0 0  2 2  0 0  2
+2  6 1 2 10  8  8 1 0  0 0  2 2  0 0  2
+2  7 0 0 10  0  0 2 0  0 0  2 3  0 0  2
+2  8 1 2 13  0  0 2 0  0 0  2 2  0 0  2
+2  9 0 0 13  0  0 1 0  0 0  2 3  0 0  2
+2 10 6 7  0 11 11 1 0  0 0  2 1  0 0  2
+2 11 6 7  0 12 12 1 0  0 0  2 1  0 0  2
+2 12 6 7  0  0  0 1 0  0 0  2 2  0 0  2
+2 13 9 8  0 14 14 1 0  0 0  2 1  0 0  2
+2 14 9 8  0  0  0 1 0  0 0  2 2  0 0  2
+
+Step 3) Create the 'slinkin.dat' input file for SLINK holding the
+parameters defined in section 3, above.  Please note that the
+random number seed should be changed for every new simulation.
+
+Step 4) Run SLINK to create a 'pedfile.dat' containing the
+simulated data.  As outlined in section 3, SLINK requires several
+parameters in an input file, 'slinkin.dat'.  The input files for
+SLINK are 'simdata.dat' and 'simped.dat' (see the flow chart in
+figure 1).
+     SLINK outputs the simulated data in the file 'pedfile.dat',
+while the parameters (as described above) and the thetas are
+written to 'simout.dat'.  If one of the companion analysis
+programs is run, it will put the information from the most recent
+'simout.dat' into the output file it creates (figure 1).  Note
+that the 'pedfile.dat' is a bona-fide LINKAGE pedigree file and
+can be analyzed by any of the regular LINKAGE programs.  However,
+it may contain many replicates of the pedigrees (one set after
+another), so that in most cases it is more practical to use the
+modified versions of the LINKAGE programs (MSIM, ISIM, LSIM) that
+are designed to analyze the data a replicate at a time.
+     In our example, we asked for simulated marker data while
+maintaining the original trait phenotypes (Availability code 2)
+for all but two people.  Note that the two people with availabil-
+ity code 0 have unknown marker genotypes.
+
+File: 'pedfile.dat' (first replicate of both families)
+
+  1  1  0  0  3  0  0 1 1  1 3  2 3  1 2 2 Linked   Mk Avail; Tr orig
+  1  2  0  0  3  0  0 2 0  0 0  2 2  0 0 0 Linked   Mk Unkno; Tr orig
+  1  3  1  2  0  4  4 2 0  1 3  2 2  1 2 2 Linked   Mk Avail; Tr orig
+  1  4  1  2  0  5  5 2 0  1 3  2 1  1 1 2 Linked   Mk Avail; Tr orig
+  1  5  1  2  0  6  6 1 0  1 3  2 2  1 2 2 Linked   Mk Avail; Tr orig
+  1  6  1  2  0  7  7 2 0  3 3  2 1  2 2 2 Linked   Mk Avail; Tr orig
+  1  7  1  2  0  8  8 1 0  3 3  2 1  2 2 2 Linked   Mk Avail; Tr orig
+  1  8  1  2  0  9  9 1 0  1 1  2 2  1 1 2 Linked   Mk Avail; Tr orig
+  1  9  1  2  0 10 10 1 0  1 3  2 2  1 2 2 Linked   Mk Avail; Tr orig
+  1 10  1  2 14 12 12 2 0  1 1  2 2  1 1 2 Linked   Mk Avail; Tr orig
+  1 11  0  0 14  0  0 1 0  1 3  2 3  2 2 2 Linked   Mk Avail; Tr orig
+  1 12  1  2  0 13 13 1 0  1 1  2 2  2 1 2 Linked   Mk Avail; Tr orig
+  1 13  1  2  0  0  0 2 0  3 3  2 1  1 2 2 Linked   Mk Avail; Tr orig
+  1 14 11 10  0 15 15 2 0  1 3  2 1  1 2 2 Linked   Mk Avail; Tr orig
+  1 15 11 10  0 16 16 1 0  1 1  2 2  2 1 2 Linked   Mk Avail; Tr orig
+  1 16 11 10  0 17 17 1 0  1 3  2 2  1 2 2 Linked   Mk Avail; Tr orig
+  1 17 11 10  0  0  0 2 0  1 3  2 1  1 2 2 Linked   Mk Avail; Tr orig
+  2  1  0  0  3  0  0 1 1  0 0  2 3  0 0 0 Linked   Mk Unkno; Tr orig
+  2  2  0  0  3  0  0 2 0  1 2  2 2  2 2 2 Linked   Mk Avail; Tr orig
+  2  3  1  2  0  4  4 2 0  1 1  2 2  2 2 2 Linked   Mk Avail; Tr orig
+  2  4  1  2  0  5  5 1 0  1 1  2 2  2 2 2 Linked   Mk Avail; Tr orig
+  2  5  1  2  0  6  6 1 0  1 1  2 2  2 2 2 Linked   Mk Avail; Tr orig
+  2  6  1  2 10  8  8 1 0  1 2  2 2  2 2 2 Linked   Mk Avail; Tr orig
+  2  7  0  0 10  0  0 2 0  3 3  2 3  1 2 2 Linked   Mk Avail; Tr orig
+  2  8  1  2 13  0  0 2 0  1 2  2 2  2 2 2 Linked   Mk Avail; Tr orig
+  2  9  0  0 13  0  0 1 0  1 3  2 3  2 1 2 Linked   Mk Avail; Tr orig
+  2 10  6  7  0 11 11 1 0  2 3  2 1  2 1 2 Linked   Mk Avail; Tr orig
+  2 11  6  7  0 12 12 1 0  2 3  2 1  2 2 2 Linked   Mk Avail; Tr orig
+  2 12  6  7  0  0  0 1 0  1 3  2 2  2 1 2 Linked   Mk Avail; Tr orig
+  2 13  9  8  0 14 14 1 0  1 2  2 1  2 2 2 Linked   Mk Avail; Tr orig
+  2 14  9  8  0  0  0 1 0  1 1  2 2  2 2 2 Linked   Mk Avail; Tr orig
+
+Step 5) Create a 'datafile.dat' defining how the simulated data
+should be analyzed.
+
+     The analysis programs require five input files (figure 1). 
+Two are made by UNKNOWN ('ipedfile.dat' and 'speedfile.dat', see
+step 6).  One is made by SLINK ('simout.dat', see step 4).  The
+fourth, 'datafile.dat', must be made using PREPLINK prior to
+running the desired analysis program.  The fifth input file,
+'limit.dat', contains three threshold values (e.g., 1  2  3) used
+to determine the proportion of replicates exceeding a given lod
+score limit.
+     The 'datafile.dat' is a standard LINKAGE data file which
+determines how the analyses of the simulated data will be carried
+out.  It must be in MLINK format for MSIM; ILINK format for ISIM;
+and LINKMAP format for LSIM.
+
+The example 'datafile.dat' below is in MLINK format and is thus
+appropriate for input into MSIM (the modified version of MLINK).
+
+File: 'datafile.dat'
+
+ 3 0 0 5 << NO. OF LOCI, RISK LOCUS, SEXLINKED (IF 1) PROGRAM
+ 0 0.0 0.0 0 << MUT LOCUS, MUT MALE, MUT FEM, HAP FREQ (IF 1)
+ 1 3 2
+3  3 << ALLELE NUMBERS, NO. OF ALLELES Locus p105-599Ha/TaqI
+ 0.320000 0.160000 0.520000  << GENE FREQUENCIES
+1  2 << AFFECTION, NO. OF ALLELES  Locus Schizophrenia
+ 0.991500 0.008500  << GENE FREQUENCIES
+ 3 << NO. OF LIABILITY CLASSES
+ 1.0000 0.1400 0.0000  Normal
+ 0.0000 0.8600 0.0000  Affected
+ 1.0000 0.0000 0.0000  Married in Normals << PENETRANCES
+3  2 << ALLELE NUMBERS, NO. OF ALLELES  Locus p105-153Ra/XbaI
+ 0.330000 0.670000  << GENE FREQUENCIES
+ 0 0 << SEX DIFFERENCE, INTERFERENCE (IF 1 OR 2)
+ 0.11970 0.12500 << RECOMBINATION VALUES
+ 2 0.12500 0.38000 << REC VARIED, INCREMENT, FINISHING VALUE
+
+NOTE:  If you choose the increment size too small, you will get
+an error message that maxpnt is too small.  Maxpnt is the number
+of theta's (or map positions in LSIM) at which the lod score is
+evaluated.  You may fix this problem by either choosing a larger
+increment or by increasing maxpnt and recompiling.
+
+Step 6) Run UNKNOWN to create a 'speedfile.dat' and an 'ipedfi-
+le.dat'
+
+     Once the 'pedfile.dat' has been created by SLINK, then it is
+necessary to process this file with the program UNKNOWN (of the
+LINKAGE package) before running any of the analysis programs.
+UNKNOWN creates the pedigree file 'ipedfile.dat' and the 'speed-
+file.dat' ('speedfil.dat' on DOS machines).  These two files are
+needed for input into MSIM, ISIM, or LSIM.
+
+Step 7) Run the appropriate analysis program, such as MSIM or
+LSIM.
+
+
+5. TYPICAL APPLICATIONS
+
+     The analysis programs, MSIM, LSIM, and ISIM, each require
+three input files:
+     1) A parameter file called 'limit.dat'.  This file holds
+three thresholds/limits for the maximum lod score;  the programs
+will approximate the probability with which the maximum lod score
+exceeds each of the three thresholds.  Typical threshold values
+are 1, 2, and 3.  Note that numbers must have at least one digit
+to the left of any decimal point, for example, 0.5;  a number
+given as .5 would lead to an error.
+     2) A locus file, 'datafile.dat', which is analogous to the
+one used for the LINKAGE programs.  You may simply copy 'simda-
+ta.dat' to 'datafile.dat' and modify the 'datafile.dat' file to
+correspond (i) to the analysis program to be used and (ii) to
+reflect the theta values at which analysis is to be carried out. 
+Note that 'datafile.dat' is also used as an input file to the UN-
+KNOWN program.
+     3) A pedigree file, 'ipedfile.dat', created by the UNKNOWN
+program.
+     Details of programs usage are given below.
+
+
+5A. MSIM: Approximating the expected lod score
+
+     First we show how to use MSIM, which summarizes its results
+in the file 'msim.dat'.  The first part of 'msim.dat' contains
+information defining the simulation, such as the random number
+seed, the number of replicates, the requested proportion of
+unlinked families, and the trait locus number.  This information
+is taken from the most recent 'simout.dat'.  Note that the thetas
+and the locus order presented in the 'simout.dat' section pertain
+to the model under which the simulation was carried out (as
+previously specified in the 'simdata.dat' file).  These may
+differ from the thetas and locus order used in the analysis of
+the simulated data.  The rest of 'msim.dat' provides statistical
+information.
+
+     If two loci are used, then the results are reported on the
+traditional lod score scale.  When three or more loci are used,
+multi-point lod scores are computed as the log likelihood at the
+current thetas minus the log likelihood with the theta involving
+the trait locus set to 0.50.  For this reason, when MLINK or MSIM
+are used, the trait locus must be either the leftmost or right-
+most locus for these statistics to make sense.  Normally, MSIM,
+like MLINK, will be used for analyses involving only two loci. 
+However, in this example, we use three loci, but place the trait
+locus (number 2) on the right by specifying the locus order to be
+'1 3 2' in the 'datafile.dat' file (see above).  Lod scores for
+the position of a disease versus a map of markers are usually
+computed with the LINKMAP (LSIM, see next section);  MSIM is used
+here for demonstration purposes.
+
+File: 'msim.dat'
+
+ ********* Data from most recent SIMOUT.DAT *********
+ The random number seed is: 25432
+ The number of replications is:   20
+ The requested proportion of unlinked families is: 0.000
+ The trait locus is locus number:  2
+   Summary Statistics about simped.dat
+ Number of pedigrees      2
+ Number of people        31
+ Number of females       12
+ Number of males         19
+ There were  2 in category: Marker Unknown; Trait original
+ There were  0 in category: Marker Available; Trait simulated
+ There were 29 in category: Marker Available; Trait original
+ There were  0 in category: Marker Unknown; Trait simulated
+LINKAGE (V4.91) WITH 3-POINT AUTOSOMAL DATA
+-----------------------------------
+ LINKED ORDER OF LOCI:  1 2 3
+-----------------------------------
+-----------------------------------
+TRUE THETAS FOR LINKED ORDER   0.073900  0.053900
+-----------------------------------
+-----------------------------------
+ UNLINKED ORDER OF LOCI:  2 1 3
+-----------------------------------
+-----------------------------------
+TRUE THETAS FOR UNLINKED ORDER   0.500000  0.119834
+-----------------------------------
+ Elapsed Time for one replicate =       8 seconds
+ Elapsed Time =     162 seconds or    2.70 minutes.
+-----------------------------------
+Actual proportion of unlinked families: 0.000
+ ********* End of most recent SIMOUT.DAT *********
+
+ ORDER OF LOCI:  1 3 2
+ Average Multipoint Lod Scores at Given Thetas
+
+Number of replicates =    20
+----------------------------------------------------------------
+THETAS 0.120 0.125
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.928233      0.823127     -0.499552      2.372393
+    2      0.581052      0.458913     -0.066598      1.564117
+
+Study      1.509285      0.725744      0.163738      3.215271
+----------------------------------------------------------------
+THETAS 0.120 0.250
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.673438      0.524425     -0.170536      1.607466
+    2      0.355322      0.371757     -0.404606      0.957419
+
+Study      1.028760      0.507228     -0.259767      2.132345
+----------------------------------------------------------------
+THETAS 0.120 0.375
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.313556      0.231926     -0.036782      0.742686
+    2      0.140380      0.209244     -0.369045      0.398341
+
+Study      0.453935      0.265833     -0.275562      0.937106
+----------------------------------------------------------------
+
+Brief explanation of the output:
+     The file 'msim.dat' contains information defining the
+simulation, followed by some tables providing statistical infor-
+mation about the distribution of the simulated lod scores. The
+'Average' column provides the expected (or mean) lod score by
+pedigree and by study (i.e., set of families).  The 'StdDev'
+column provides the standard deviation of the lod score.  The
+'Min' column lists the minimum lod score encountered in all the
+replicates, and the 'Max' column lists the maximum lod score
+encountered in all the replicates (and when the pedigrees are
+used together in one study).  Note that the only column in which
+the Study value will equal the sum of the Pedigree values is the
+'Average' column.  If one is interested in approaching the
+absolute smallest (or absolute largest) lod score in the whole
+study, one should add up the min. (or max.) values (if all have
+the same sign) over pedigrees rather than looking at the Study
+min. (or max.) value.
+
+
+5B. LSIM: Disease versus map of markers
+
+     If we want to run LSIM (the modified version of LINKMAP), we
+need a different 'datafile.dat' than the one used above for MSIM
+because the data file for LSIM must be in standard LINKMAP
+format.  Like LINKMAP, LSIM is most appropriate for calculating
+lod scores of the trait locus at various positions across a fixed
+map of marker loci.  As mentioned above, a multi-point lod score
+requires calculation of the likelihood of the data with the trait
+"off" the map first.  Thus, there are two requirements for
+getting accurate results out of LSIM: 1) the trait locus must
+start out as the leftmost locus; and 2) the trait locus must be
+placed "off" the map on the left at a recombination fraction of
+0.50.  This allows calculation of multi-point lod scores as the
+trait locus is moved across the whole map.  In this example, the
+trait locus is number 2 and so the locus order must be specified
+as '2 1 3' in order to have the trait locus be off the map on the
+left.  Since the trait locus must be placed off the map, the
+first recombination fraction is 0.50.
+
+File: 'datafile.dat'
+
+ 3 0 0 4 << NO. OF LOCI, RISK LOCUS, SEXLINKED (IF 1) PROGRAM
+ 0 0.0 0.0 0 << MUT LOCUS, MUT RATE, HAPLOTYPE FREQUENCIES (IF 1)
+ 2 1 3
+3  3 << ALLELE NUMBERS, NO. OF ALLELES Locus p105-599Ha/TaqI
+ 0.320000 0.160000 0.520000  << GENE FREQUENCIES
+1  2 << AFFECTION, NO. OF ALLELES  Locus Schizophrenia
+ 0.991500 0.008500  << GENE FREQUENCIES
+ 3 << NO. OF LIABILITY CLASSES
+ 1.0000 0.1400 0.0000 Normal
+ 0.0000 0.8600 0.0000 Affected
+ 1.0000 0.0000 0.0000 Married in Normals << PENETRANCES
+3  2 << ALLELE NUMBERS, NO. OF ALLELES  Locus p105-153Ra/XbaI
+ 0.330000 0.670000  << GENE FREQUENCIES
+ 0 0 << SEX DIFFERENCE, INTERFERENCE (IF 1 OR 2)
+ 0.50000 0.11980 << RECOMBINATION VALUES
+ 2 0.11970  4 << LOCUS VARIED, FINISHING VALUE, NU OF EVALUATIONS
+
+     LSIM (the modified version of LINKMAP) creates the following
+output file, which has been edited to conserve space. Note how
+LSIM, unlike LINKMAP, automatically moves the trait locus across
+each interval in the fixed map of marker loci, as indicated by
+the different locus orders in the tables below (the middle number
+on the last line of the 'datafile.dat' is irrelevant for LSIM).
+
+File: 'lsim.dat' (edited)
+
+ ********* Data from most recent SIMOUT.DAT *********
+-----------------------------------
+ LINKED ORDER OF LOCI:  1 2 3
+-----------------------------------
+-----------------------------------
+TRUE THETAS FOR LINKED ORDER   0.073900  0.053900
+-----------------------------------
+-----------------------------------
+ UNLINKED ORDER OF LOCI:  2 1 3
+-----------------------------------
+-----------------------------------
+TRUE THETAS FOR UNLINKED ORDER   0.500000  0.119834
+-----------------------------------
+Actual proportion of unlinked families: 0.000
+ ********* End of most recent SIMOUT.DAT *********
+
+ Average Multipoint Lod Scores at Given Thetas
+
+Number of replicates =    20
+
+----------------------------------------------------------------
+ Locus Order:  2 1 3 THETAS 0.500 0.120
+Number of replicates with a maximum at this location       0
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.000000      0.000000      0.000000      0.000000
+    2      0.000000      0.000000      0.000000      0.000000
+
+Study      0.000000      0.000000      0.000000      0.000000
+----------------------------------------------------------------
+ Locus Order:  2 1 3 THETAS 0.125 0.120
+
+Number of replicates with a maximum at this location       1
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.986943      0.957538     -0.563674      2.811669
+    2      0.553123      0.587166     -0.495850      1.583681
+
+Study      1.540066      0.943955     -1.059524      3.268075
+----------------------------------------------------------------
+ Locus Order:  1 2 3 THETAS 0.060 0.068
+Number of replicates with a maximum at this location       2
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      1.147581      1.148037     -0.900799      3.205506
+    2      0.751585      0.636813     -0.343115      2.097035
+
+Study      1.899166      1.040807     -0.212925      4.120526
+----------------------------------------------------------------
+ Locus Order:  1 2 3 THETAS 0.090 0.037
+Number of replicates with a maximum at this location       0
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      1.097943      1.163443     -1.264877      3.126892
+    2      0.733534      0.603973     -0.154687      2.095361
+
+Study      1.831477      1.055195     -0.426049      4.131400
+----------------------------------------------------------------
+ Locus Order:  1 3 2 THETAS 0.120 0.125
+Number of replicates with a maximum at this location       3
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.928120      0.823000     -0.499557      2.372007
+    2      0.580943      0.458917     -0.066556      1.564077
+
+Study      1.509064      0.725652      0.163398      3.214886
+----------------------------------------------------------------
+ Locus Order:  1 3 2 THETAS 0.120 0.250
+Number of replicates with a maximum at this location       0
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.673346      0.524329     -0.170544      1.607176
+    2      0.355246      0.371761     -0.404694      0.957392
+
+Study      1.028592      0.507163     -0.259854      2.132040
+----------------------------------------------------------------
+ Locus Order:  1 3 2 THETAS 0.120 0.375
+Number of replicates with a maximum at this location       0
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.313506      0.231874     -0.036785      0.742532
+    2      0.140356      0.209227     -0.369050      0.398359
+
+Study      0.453862      0.265785     -0.275485      0.936943
+----------------------------------------------------------------
+
+     The output in LSIM.DAT is very similar to that found in
+MSIM.DAT (Average, Standard Deviation, Minimum and Maximum). 
+However, there is an additional line that records the number of
+replicates with a maximum at the location.  This number gives a
+measure of how often the trait locus would be mapped to that
+particular location, providing a sense of the best supported
+location for the trait locus.  In our example, we simulated with
+the trait locus between the two marker loci, and we find that 3
+out of 20 times, the trait would have mapped into the interval at
+a theta of .120 from the first marker locus.
+
+     NOTE:  The program parameter maxpnt, which defines the
+maximum number of points at which the lod score can be evaluated,
+may cause problems when the increment of theta is too small. 
+Maxpnt appears in MSIM and LSIM, but not in ISIM.  If one sets
+the increment of theta too small, MSIM or LSIM may terminate with
+the following error message:  ERROR: maxpnt is too small.  The
+solution is to 1) evaluate lod score at less points or 2) set
+maxpnt higher and recompile the programs.  In LSIM, this may mean
+choosing points evaluated in each interval rather than over the
+whole map.
+
+5C. ISIM: Average maximum lod score and power
+
+     With ISIM (as with ILINK), the recombination fraction
+between two loci can be iterated and, therefore, the lod score
+obtained for a given replicate is maximized over the theta
+values.  Thus, ISIM can approximate the average (expectation) of
+the maximum lod score.
+     In our example application of ISIM, we use the files from
+Example 1, where we simulated the marker genotypes for two
+affected children in a simple nuclear family where the two
+parents are known to have four different marker alleles.  The
+'simdata.dat' and 'simped.dat' have been explained above.  The
+'datafile.dat' must be in ILINK format.  If the recombination
+fraction between the two loci is iterated, then the average of
+the maximum lod score will be calculated.  If the recombination
+fraction is not iterated, then the average of the lod score
+(unmaximized) will be calculated at the requested thetas.  In the
+file below, we request that the recombination fraction be iterat-
+ed.  Note: ISIM may not maximize the log likelihood over theta
+correctly if the disease gene frequencies are extreme (even when
+they are fixed).  You may also want to designate locus 1 or locus
+2 as the locus with iterated parameters.
+
+File: 'datafile.dat'
+
+ 2 0 0 3 << NO. OF LOCI, RISK LOCUS, SEXLINKED (IF 1) PROGRAM
+ 0 0.0 0.0 0 << MUT LOCUS, MUT MALE, MUT FEM, HAP FREQ (IF 1)
+ 1 2
+1  2 << AFFECTION, NO. OF ALLELES
+ 0.9900 0.0100  << GENE FREQUENCIES
+ 1 << NO. OF LIABILITY CLASSES
+ 0.0000 0.0000 1.0000 << PENETRANCES
+3  4 << ALLELE NUMBERS, NO. OF ALLELES
+ 0.250000 0.250000 0.250000 0.250000  << GENE FREQUENCIES
+ 0 0 << SEX DIFFERENCE, INTERFERENCE (IF 1 OR 2)
+ 0.01000 << RECOMBINATION VALUES
+ 1 << THIS LOCUS MAY HAVE ITERATED PARS
+ 1
+
+     When we run ISIM, we obtain the following output, which
+reports the average of the maximum lod score:
+
+File 'isim.dat' (edited):
+
+ ********* Data from most recent SIMOUT.DAT *********
+ The random number seed is: 29876
+ The number of replications is:  200
+ The requested proportion of unlinked families is: 0.000
+ The trait locus is locus number:  1
+   Summary Statistics about simped.dat
+ Number of pedigrees      1
+ Number of people         4
+ Number of females        2
+ Number of males          2
+ There were  0 in category: Marker Unknown; Trait original
+ There were  0 in category: Marker Available; Trait simulated
+ There were  4 in category: Marker Available; Trait original
+ There were  0 in category: Marker Unknown; Trait simulated
+
+LINKAGE (V4.91) WITH 2-POINT AUTOSOMAL DATA
+-----------------------------------
+ LINKED ORDER OF LOCI:  1 2
+-----------------------------------
+-----------------------------------
+TRUE THETAS FOR LINKED ORDER   0.010000
+-----------------------------------
+Actual proportion of unlinked families: 0.000
+ ********* End of most recent SIMOUT.DAT *********
+
+ Average Maximum Lod Score
+
+The number of replicates is   200
+--------------------------------------------------------
+ Average Maximum | StdDev      | Min         | Max
+      0.576825      0.117744     0.000000      0.600859
+--------------------------------------------------------
+--------------------------------------------------------
+  Number of maximum lod scores greater than
+  a given constant
+--------------------------------------------------------
+ Constant   Number   Percent
+       1      161    80.500     (assumed values)
+       2        0     0.000
+       3        0     0.000
+--------------------------------------------------------
+
+     Note that there is no theta value reported with the Average
+Maximum Lod Score.  This is because each maximum lod score (in a
+replicate) may correspond to a different estimate of theta. 
+Also, note that the average maximum lod score is not additive
+over families or studies.  The average lod score (ELOD), calcu-
+lated previously, does possess this desirable property of additi-
+vity (see Ott, 1991).
+     The last table appearing in 'isim.dat' gives the number and
+percentage of replicates in which the maximized lod score (Zmax)
+was found greater than the given constants.  The proportion of
+replicates with Zmax > 3 is an approximation to the power, i.e., to
+finding a significant linkage.
+
+
+5D. MSIM: Interpolating Zmax in each replicate
+
+     The average of the maximum lod score (calculated by ISIM)
+may be much more time consuming to compute, because maximization
+of the lod score requires many evaluations of the lod score.  To
+partially avoid this problem, MSIM can estimate maximum lod
+scores by quadratic interpolation. The quadratic interpolation
+option works automatically, but only in the special case where
+there are two loci, autosomal inheritance, and the 'datafile.dat'
+for MSIM requests evaluation of the lod score at three or more
+distinct points.  To get the best results from the quadratic
+interpolation, you should evaluate the lod score at more than
+three points.  Also, it is better not to choose theta = 0.0 as
+one of the points, because if there is an obligate recombination,
+then the lod score is minus infinity (use theta = 0.00001 or
+0.001 instead).  For example, if we run the problem above,
+starting theta at 0.01 and increasing it in increments of 0.10 up
+to 0.41, for a total of 5 points, we get the results seen below,
+which are very similar to those obtained above by ISIM:
+
+From the file: 'msim.dat'
+
+----------------------------------------------------------------
+ Average Maximum Lod Scores based on quadratic interpolation
+----------------------------------------------------------------
+Pedigree    Average       StdDev        Min           Max
+    1      0.579848      0.118361      0.000000      0.604008
+----------------------------------------------------------------
+
+
+5E. Finding the peak of the expected lod score curve
+
+     Theoretically, the expected lod score should have its
+maximum (the ELOD) at the true recombination fraction.  In a
+simulation, one may verify this by computing the average lod
+score at several assumed theta values in the vicinity of the true
+recombination fraction under which the data are generated.  The
+peak should occur at or near the true recombination fraction. 
+MSIM or LSIM may be used for these calculations.
+
+5F. MSIM and HOMOG and ELODHET: analysis under heterogeneity
+
+     As outlined above, SLINK can generate data under heterogene-
+ity (alpha <1) but one should not analyze data so generated assuming
+homogeneity, for example, using output from the MSIM program.  If
+families generated with alpha <1 are analyzed with MSIM, that is,
+assuming alpha=1, the resulting lod scores are too low and do not
+correspond to the ELOD under heterogeneity;  also, the estimates
+of theta are biased upwards.
+
+     When generating data under heterogeneity, the easiest
+solution for analysis is to focus on the expected lod score
+(ELOD);  working with the probability that the maximum lod score
+exceeds a given threshold requires more complicated manipulations
+than described here.  The replicates generated by SLINK are
+analyzed with MSIM but the results produced by MSIM (MSIM.DAT)
+are disregarded.  Instead, one takes the LODFILE.DAT output
+generated by MSIM and analyzes it using either the HOMOG program
+(version 3.30 or higher) or a utility program called ELODHET. 
+The latter program uses LODFILE.DAT and MSIM.DAT as input files
+and computes for each family its expected lod score under hetero-
+geneity.  Presently, its use is restricted to two loci (a trait
+and a marker locus).  For analysis by the HOMOG program, the data
+in LODFILE.DAT will have to be completed to form a proper input
+file for HOMOG.
+
+	When data are generated under heterogeneity, it is usually
+most appropriate to also analyze them under heterogeneity. The
+ELODHET program accomplishes this task. It carries out two types
+of analyses:
+
+	1) For the given values of a (proportion of families with
+linkage) and q (recombination fraction in families with linkage)
+under which the family data were generated, ELODHET calculates
+expected lod scores Z for each family and, for all families
+jointly, the probability (power) that the lod score at a and q
+exceeds given thresholds (as furnished in the 'limit.dat' file).
+The expected lod score under heterogeneity is defined as Z(a, q)
+= log10[L(a, q)] - log10[L(1, 0.5)], where L is the usual
+likelihood under heterogeneity, that is, for the i-th family,
+Li(a, q) = a  Li(q) + 1 - a, and Li(q) is the antilog of the i-th
+family's lod score.
+
+	2) Expected maximum lod scores are calculated by evaluating
+in each replicate, for all families jointly, the maximum
+likelihood over a grid of values of a and q (irrespective of the
+a and q values used to generate the data). That is, each
+simulated replicate furnishes Zmax(a, q) = log10[Lmax(a, q)] -
+log10[L(0, 0.5)], where a and q are estimates obtained in a given
+replicate. For the Zmax values, their average is computed and the
+proportion of replicates in which Zmax exceeds given thresholds
+(power). Note that Zmax involves two degrees of freedom, and the
+associated lod score threshold is thus somewhat less conservative
+than that for the lod score under homogeneity. In this sense, the
+Zmax under heterogeneity is comparable to obtaining separate
+estimates for male and female recombination fractions.
+
+	To use the ELODHET program, one must first run SLINK and
+MSIM. For the latter run, lod scores should be evaluated at
+suitable intervals, for example, starting at q = 0.00001 and
+increasing in steps of 0.05 with a limiting value of 0.47. In its
+present implementation, the step size for a in the analysis is
+taken to be 0.025. As in the HOMOG programs, no interpolation is
+carried out to approximate maximum lod scores. The ELODHET
+program reads the LODFILE.DAT file created by MSIM and furnishes
+its results in an output file called ELODHET.DAT.
+
+
+6. TECHNICAL INFORMATION
+
+     As indicated below, the programs in this package are modi-
+fied versions of LINKAGE programs.  They were modified by Daniel
+E. Weeks with help from Mark Lathrop.  Please address any ques-
+tions or problems to:
+
+    Daniel E. Weeks
+    University of Pittsburgh
+    Department of Human Genetics
+    130 DeSoto Street
+    A300 Crabtree Hall
+    Pittsburgh, PA 15261
+    (412) 624-5388 or (412) 624-3018
+    FAX: (412) 624-3020
+    Email: weeks@pitt.edu
+
+     The programs are distributed by J. Ott in versions for Vax
+(VMS) computers ("Disk" 21) and microcomputers running under DOS
+or OS/2 ("Disks" 20a through d).  The DOS and OS/2 versions have
+been adapted to Prospero Pascal.  For details on compiling and
+linking, see the PROSPERO.TXT file.  Disk 20b contains a running
+version of the UNKNOWN program.  You may also use the UNKNOWN
+program furnished with the LINKAGE programs.
+
+     Differences between Prospero and Vax Pascal (double preci-
+sion real variables):
+
+                       Prospero            Vax
+                    -------------      --------------
+Top line            none                [G_FLOATING]
+Type real=          LONGREAL            DOUBLE
+Closing files       CLOSE(ff,true)      CLOSE(ff)
+Clock function      explicit (present)  built-in
+File buffer         FBUFFER(ff,4096)    not used
+Assign statements   ASSIGN              not used
+
+In addition, in procedure inib, replace ASSIGN by OPEN for Vax
+Pascal.
+
+6A. Program constants
+
+               Program   Purpose/Description
+---------------------------------------------------
+Simulation     SLINK     General simulation program
+
+Analysis       MSIM      Modified version of MLINK
+               ISIM      Modified version of ILINK
+               LSIM      Modified version of LINKMAP
+
+     The analysis programs, MSIM, ISIM, and LSIM, read the number
+of pedigrees per replicate (i.e., study) from the summary file
+'simout.dat' produced by SLINK.
+     There are several constants that may be changed to modify
+the behavior of the programs.  This requires editing the source
+code followed by recompilation.  Compilation instructions are in 
+the documentation file README.txt.
+     A standard version of one of the LINKAGE programs, such as
+MLINK, produces a lot of output.  For the purposes of conserving
+disk space and speeding up the SLINK programs, most of the
+'standard' output has been turned off by a logical flag.  This
+constant is called 'prn' or 'print' and is identified in the
+source code of each program by a comment.  Set the constant equal
+to TRUE if you want more output.
+     For an affection status locus, the unaffected individuals
+are indicated by the integer constant assigned to 'unaff'.
+     In the LINKAGE programs, the phenotype at a quantitative
+locus may consist of several measurements (or traits).  However,
+SLINK supports only ONE measurement (or trait) for a quantitative
+locus.  Unaffected males at a sex-linked locus are indicated by
+the integer constant assigned to 'unafqu'.
+     MSIM will write a list of lod scores by pedigree to the file
+'lodfile.dat' if the constant 'lodprint' is set to TRUE.  Howev-
+er, it only writes out the male thetas.  This may be useful if
+you wish to produce a histogram of lod scores.
+
+6B. References for SLINK
+
+     Please use the following two references when reporting
+results based on SLINK:
+
+     Ott J (1989) Computer-simulation methods in human linkage
+analysis.  Proc Natl Acad Sci USA 86:4175-4178
+     Weeks DE, Ott J, Lathrop GM (1990) SLINK: a general simula-
+tion program for linkage analysis.  Am J Hum Genet 47:A204
+(abstr)
+
+6C. Acknowledgments
+
+     We would like to thank Joseph Terwilliger and Suzanne Leal
+for their helpful comments.  Support by the W.M. Keck Foundation
+and grants MH44292 from NIMH and HG00008 from the National Center
+for Human Genome Research are gratefully acknowledged.
+
+7. LITERATURE
+
+     Boehnke M (1986) Estimating the power of a proposed linkage
+study: a practical computer simulation approach.  Am J Hum Genet
+39:513-527
+
+     Lange K, Matthysse S (1989) Simulation of pedigree genotypes
+by random walks.  Am J Hum Genet 45:959-970
+
+     Lathrop GM, Lalouel JM, Julier C, Ott J (1984) Strategies
+for multilocus linkage analysis in humans.  Proc Natl Acad Sci
+USA 81:3443-3446
+
+     Ott J (1985) Analysis of human genetic linkage, first
+edition.  Johns Hopkins University Press, Baltimore
+
+     Ott J (1989) Computer-simulation methods in human linkage
+analysis.  Proc Natl Acad Sci USA 86:4175-4178
+
+     Ott J (1991) Analysis of Human Genetic Linkage, second
+edition.  Johns Hopkins University Press, Baltimore and London
+
+     Ploughman LM, Boehnke M (1989) Estimating the power of a
+proposed linkage study for a complex genetic trait.  Am J Hum
+Genet 44:543-551
+
+     Sandkuyl L, Ott J (1989) Determining informativity of marker
+typing for genetic counseling in a pedigree.  Hum Genet 82:159-
+162
+
+     Sherrington R, Brynjolfsson J, Petursson H, Potter M,
+Dudleston K, Barraclough B, Wasmuth J, Dobbs M, Gurling H (1988)
+Localization of a susceptibility locus for schizophrenia on
+chromosome 5.  Nature 336:164-167
+
+     Weeks DE, Ott J, Lathrop GM (1990) SLINK: a general simula-
+tion program for linkage analysis. Am J Hum Genet 47:A204 (abstr)
+
+
+
+
+Figure 1:
+
+
+       simdata.dat                     simped.dat
+                |                        |
+                |                        |
+                |                        |
+                |                        |
+                \/                       \/
+
+             ==============================
+slinkin.dat->=          SLINK             =  ----> simout.dat
+             ==============================
+                          |                             |
+                          |                             |
+                          |                             |
+                          |                             |
+                          \/                            |
+                                                        |
+        datafile.dat    pedfile.dat                     |
+            |               |                           |
+            |               |                           |
+           \/              \/                           |
+         ==========================                     |
+         =      UNKNOWN           =                     |
+         ==========================                     |
+                        |       |                       |
+                        |       |                       |
+                        |       |                       |
+                       \/      \/                       |
+ datafile.dat   ipedfile.dat speedfile.dat              |
+            |           |       |                       |
+            |           |       |                       |
+            |           |       |                       |
+            \/         \/      \/                       |
+           ==============================               |
+limit.dat->=    MSIM, ISIM, LSIM        = <-------------|
+  |         ==============================              |
+  |             |               |                       |
+  |             |               |                       |
+  |             |               |                       |
+  |            \/              \/                       |
+  |                                                     |
+  |     outfile.dat         msim.dat                    |
+  |     lodfile.dat         isim.dat    <---------------|
+  |       |                 lsim.dat
+  |       |                   |
+  \/      \/                  \/
+  ==============================
+  =        ELODHET             =
+  ==============================
+           |
+           |
+           \/
+           elodhet.dat
+
