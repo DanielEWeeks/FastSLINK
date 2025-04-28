@@ -142,9 +142,9 @@ Most of the modified code is in the following files:
                         version of the new code.
 
     slsexmodified.c	contains the sex-linked version of
-                    slautomodified.c
+                        slautomodified.c
 
-    slomoddefs.h 	 	 versions that contain the slower but
+    slomoddefs.h 	 versions that contain the slower but
     slsloautomodified.c  space-efficient alternatives of the
     slslosexmodified.c	 above modules
 
