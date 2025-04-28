@@ -40,7 +40,7 @@ loci to be simulated in pedigrees conditional on trait values. BMC
 Genet. 2006 Jul 3;7:40. PubMed PMID: 16803631; PubMed Central PMCID:
 PMC1524809.
 
-SUP is available from the web site:
+SUP was previously available from this web site:
 
 http://mlemire.freeshell.org/software.html
 
@@ -320,7 +320,10 @@ Now the restriction on number of alleles is removed. It remains
 necessary to set a maximum number of alleles in commondefs.h by changing
 the code line that looks like:
 
+```
 #define maxall          129   /*MAX NUMBER OF ALLELES AT A SINGLE LOCUS*/
+```
+
 before compiling.
 
 By calling
