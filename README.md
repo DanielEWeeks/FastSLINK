@@ -18,7 +18,7 @@ program package by Weeks, Ott, and Lathrop:
   2) Weeks DE, Ott J, Lathrop GM (1990) SLINK: a general simula-
 tion program for linkage analysis. Am J Hum Genet 47:A204 (abstr)
 
-    SLINK is based on the LINKAGE programs version 4.9 (Lathrop
+SLINK is based on the LINKAGE programs version 4.9 (Lathrop
 et al., 1984) and accepts slightly modified LINKAGE data files as
 explained in the file 'slink.txt'.  The code has been updated to
 be consistent with LINKAGE version 5.1.
@@ -135,22 +135,22 @@ the COMPILATION section below.
 Most of the modified code is in the following files:
 
     moddefs.h		definitions and declarations associated
-			with the fast, but memory intensive
-			version of the new code.
+					with the fast, but memory intensive
+					version of the new code.
 
     slautomodified.c	contains the fast, but memory intensive 
-			version of the new code.
+						version of the new code.
 
     slsexmodified.c	contains the sex-linked version of
-			slautomodified.c
+					slautomodified.c
 
-    slomoddefs.h 	 versions that contain the slower but
+    slomoddefs.h 	 	 versions that contain the slower but
     slsloautomodified.c  space-efficient alternatives of the
     slslosexmodified.c	 above modules
 
     oldsegup.c		contains the old (p2c version of original
-			programs) versions of segup() and segsexup(),
-			which are needed for handling mutation data.
+					programs) versions of segup() and segsexup(),
+					which are needed for handling mutation data.
 
 We have changed seg() in the original code so that the modified
 routines are called only for mutation-less data.  For data with
@@ -379,7 +379,7 @@ Quantitative trait loci can be simulated.
 Here is an example of what a QTL specification looks like in
 simdata.dat
 
-
+```
  2 0 0 5  << NO. OF LOCI, RISK LOCUS, SEXLINKED (IF 1) PROGRAM
  0 0.0 0.0 0  << MUT LOCUS, MUT RATE, HAPLOTYPE FREQUENCIES (IF 1)
   1  2
@@ -394,6 +394,7 @@ simdata.dat
  0 0  << SEX DIFFERENCE, INTERFERENCE (IF 1 OR 2)
  0.01000 << RECOMBINATION VALUES
  1 0.00 0.50000 << REC VARIED, INCREMENT, FINISHING VALUE
+```
 
 Here we have one quantitative trait locus and one marker locus. The
 recombination fraction (second value on the last line) is chosen as 0.00
@@ -414,7 +415,7 @@ the fourth and last number is 1 instead of the usual 0. The other key
 difference is that haplotype frequencies are provided after both loci,
 instead of allele frequencies after each locus.
 
-
+```
  2 0 0 5  << NO. OF LOCI, RISK LOCUS, SEXLINKED (IF 1) PROGRAM
  0 0.0 0.0 1  << MUT LOCUS, MUT RATE, HAPLOTYPE FREQUENCIES (IF 1)
   1  2
@@ -427,6 +428,7 @@ instead of allele frequencies after each locus.
  0 0  << SEX DIFFERENCE, INTERFERENCE (IF 1 OR 2)
  0.01000 << RECOMBINATION VALUES
  1 0.00000 0.50000 << REC VARIED, INCREMENT, FINISHING VALUE
+```
 
 For a more in-depth explanation of how the haplotype frequencies
 are coded, please see the SUP documentation.
