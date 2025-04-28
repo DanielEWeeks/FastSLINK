@@ -15,8 +15,7 @@ analysis.  Proc Natl Acad Sci USA 86:4175-4178
 The algorithm was implemented in the original SLINK computer
 program package by Weeks, Ott, and Lathrop:
 
-  2) Weeks DE, Ott J, Lathrop GM (1990) SLINK: a general simula-
-tion program for linkage analysis. Am J Hum Genet 47:A204 (abstr)
+  2) Weeks DE, Ott J, Lathrop GM (1990) SLINK: a general simulation program for linkage analysis. Am J Hum Genet 47:A204 (abstr)
 
 SLINK is based on the LINKAGE programs version 4.9 (Lathrop
 et al., 1984) and accepts slightly modified LINKAGE data files as
