@@ -134,6 +134,7 @@ the COMPILATION section below.
 
 Most of the modified code is in the following files:
 
+```
     moddefs.h		definitions and declarations associated
 					with the fast, but memory intensive
 					version of the new code.
@@ -151,6 +152,7 @@ Most of the modified code is in the following files:
     oldsegup.c		contains the old (p2c version of original
 					programs) versions of segup() and segsexup(),
 					which are needed for handling mutation data.
+```
 
 We have changed seg() in the original code so that the modified
 routines are called only for mutation-less data.  For data with
@@ -453,6 +455,6 @@ CONTACTS
 
 Daniel E. Weeks:  weeks@pitt.edu
 
-Alejandro Schaffer: schaffer@helix.nih.gov
+Alejandro Schäffer: alejandro.schaffer@nih.gov
 
 For SUP, contact Mathieu Lemire: Mathieu.Lemire@oicr.on.ca
